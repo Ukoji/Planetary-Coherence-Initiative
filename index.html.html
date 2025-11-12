@@ -1,8 +1,9 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>Planetary Chakra Rays — Full Week (Trilingual)</title>
 <style>
   :root{
@@ -53,52 +54,46 @@
 </style>
 </head>
 <body>
-  <header>
-    <h1>Planetary Chakra Rays — Full Week (Prototype)</h1>
-    <p class="lead">24 planetary hours per day — language toggle (EN / FR / DE) • audio placeholders • CSV / JSON export</p>
-  </header>
-
-  <div class="top-row" aria-hidden="false">
-    <div class="lang-buttons" role="group" aria-label="Quick language buttons">
-      <button class="lang-btn active" data-lang="en">English</button>
-      <button class="lang-btn" data-lang="fr">Français</button>
-      <button class="lang-btn" data-lang="de">Deutsch</button>
-    </div>
-
-    <div style="display:flex;gap:8px;align-items:center;">
-      <label for="lang-selector" class="small" style="margin-right:6px;">Language selector:</label>
-      <select id="lang-selector" aria-label="Language selector">
-        <option value="en">English</option>
-        <option value="fr">Français</option>
-        <option value="de">Deutsch</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="controls" style="margin-bottom:10px;">
-    <div class="left">
-      <label for="day-selector" class="small" style="align-self:center;margin-right:6px;">Day:</label>
-      <select id="day-selector" aria-label="Day selector">
-        <option value="all">Show All Days</option>
-        <option value="Monday">Monday</option>
-        <option value="Tuesday">Tuesday</option>
-        <option value="Wednesday">Wednesday</option>
-        <option value="Thursday">Thursday</option>
-        <option value="Friday">Friday</option>
-        <option value="Saturday">Saturday</option>
-        <option value="Sunday">Sunday</option>
-      </select>
-    </div>
-    <div class="right" id="nowLabel">Local time: --:--</div>
-  </div>
-
-  <main id="content" role="main"></main>
-
-  <div class="export-row">
-    <button id="btnExportCSV">Export CSV</button>
-    <button id="btnExportJSON">Export JSON</button>
-  </div>
-
+<header>
+<h1>Planetary Chakra Rays — Full Week (Prototype)</h1>
+<p class="lead">24 planetary hours per day — language toggle (EN / FR / DE) • audio placeholders • CSV / JSON export</p>
+</header>
+<div aria-hidden="false" class="top-row">
+<div aria-label="Quick language buttons" class="lang-buttons" role="group">
+<button class="lang-btn active" data-lang="en">English</button>
+<button class="lang-btn" data-lang="fr">Français</button>
+<button class="lang-btn" data-lang="de">Deutsch</button>
+</div>
+<div style="display:flex;gap:8px;align-items:center;">
+<label class="small" for="lang-selector" style="margin-right:6px;">Language selector:</label>
+<select aria-label="Language selector" id="lang-selector">
+<option value="en">English</option>
+<option value="fr">Français</option>
+<option value="de">Deutsch</option>
+</select>
+</div>
+</div>
+<div class="controls" style="margin-bottom:10px;">
+<div class="left">
+<label class="small" for="day-selector" style="align-self:center;margin-right:6px;">Day:</label>
+<select aria-label="Day selector" id="day-selector">
+<option value="all">Show All Days</option>
+<option value="Monday">Monday</option>
+<option value="Tuesday">Tuesday</option>
+<option value="Wednesday">Wednesday</option>
+<option value="Thursday">Thursday</option>
+<option value="Friday">Friday</option>
+<option value="Saturday">Saturday</option>
+<option value="Sunday">Sunday</option>
+</select>
+</div>
+<div class="right" id="nowLabel">Local time: --:--</div>
+</div>
+<main id="content" role="main"></main>
+<div class="export-row">
+<button id="btnExportCSV">Export CSV</button>
+<button id="btnExportJSON">Export JSON</button>
+</div>
 <script>
 /* -------------------------
    Full integrated prototype
@@ -486,6 +481,27 @@ highlightCurrent();           // initial highlight
 setInterval(nowLabelUpdate, 1000 * 30); // update clock every 30s for label
 setInterval(highlightCurrent, 60000);   // ensure highlight updates on minute change
 
+
+/* --- Auto-play the current planetary hour mantra --- */
+function autoplayCurrentHour() {
+  const activeRow = document.querySelector('tr.highlight');
+  if (!activeRow) return;
+  const audio = activeRow.querySelector('audio');
+  if (audio) {
+    // give the browser a short moment to render before playing
+    setTimeout(() => {
+      audio.play().catch(err => {
+        console.log('Autoplay blocked until user interacts:', err);
+      });
+    }, 800);
+  }
+}
+
+// run once on load
+window.addEventListener('load', autoplayCurrentHour);
+
+// re-run whenever the highlight refreshes (every minute)
+setInterval(autoplayCurrentHour, 60000);
 </script>
 </body>
 </html>
