@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Planetary Chakra Rays — Preview</title>
+<style>
+  :root{
+    --bg1:#0f3b6a;
+    --bg2:#2b6aa3;
+    --bg3:#9fdcf0;
+    --card: rgba(255,255,255,0.98);
+    --muted:#e7eef6;
+    --text:#062033;
+    --bridge:#7FFFD4;
+    --cell-pad:12px;
+    --ray-height:78px;
+    --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:var(--font-sans);color:var(--text);}
+  body{
+    background: linear-gradient(180deg,var(--bg1) 0%, var(--bg2) 45%, var(--bg3) 100%);
+    padding:26px;
+  }
+
+  .container{ max-width:1200px; margin:0 auto; background:linear-gradient(0deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)); border-radius:12px; padding:18px; box-shadow:0 10px 40px rgba(0,0,0,0.18); }
+
+  h1{ margin:0 0 8px; font-size:20px; text-align:center; color:#072033; }
+  p.lead{ margin:0 0 14px; text-align:center; color:#234a66; font-size:13px; }
+
+  .controls{ display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin:14px 0; }
+  .left-controls{ display:flex; gap:10px; align-items:center; }
+  .lang-btn, select, button{ padding:8px 10px; border-radius:8px; border:0; cursor:pointer; background:#fff; font-size:13px; }
+  .lang-btn.active{ box-shadow:0 6px 18px rgba(0,0,0,0.08); transform:translateY(-1px); background:#062033; color:#fff; }
+  #nowLabel{ color:#093142; font-size:13px; opacity:0.95; }
+
+  .day-section{ margin:12px 0 22px; }
+  .day-title{ font-weight:600; margin:6px 0 10px; color:#032036 }
+
+  /* table-like layout using semantic grid for equal-width "ray" columns */
+  .grid-header{
+    display:grid; grid-template-columns: 110px 70px 110px 1fr; gap:8px;
+    align-items:center; padding:8px; border-radius:8px; background:rgba(5,20,30,0.04); color:#012;
+    border:1px solid rgba(0,0,0,0.04); font-weight:700;
+  }
+  .grid-row{
+    display:grid; grid-template-columns: 110px 70px 110px 1fr; gap:8px;
+    align-items:stretch; margin-bottom:8px;
+  }
+  .cell-main{ background:var(--card); padding:10px; border-radius:8px; border:1px solid rgba(0,0,0,0.05); display:flex; flex-direction:column; justify-content:center; min-height:var(--ray-height); }
+  .cell-planet{ font-weight:700; margin-bottom:6px; color:#032036; }
+  .cell-sub{ font-size:13px; color:#234a66; }
+  /* Ray area: 3D / Bridge / 4D / 5D as a horizontal row inside the "1fr" cell */
+  .rays{ display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:8px; align-items:stretch; min-height:var(--ray-height); }
+  .ray{ border-radius:8px; padding:10px; display:flex; align-items:center; justify-content:center; text-align:center; font-weight:600; color:#062033; box-shadow:0 4px 14px rgba(0,0,0,0.06); }
+  .ray .small{ font-size:12px; font-weight:500; opacity:0.95; }
+
+  .bridge { background:var(--bridge); }
+  .audio-cell{ display:flex; align-items:center; gap:8px; padding-left:8px; }
+
+  .highlight{ outline:4px solid rgba(255,255,255,0.18); box-shadow:0 8px 26px rgba(0,0,0,0.18); transform:translateY(-2px); }
+
+  .export-row{ display:flex; justify-content:center; gap:10px; margin-top:14px; }
+  .small-muted{ font-size:12px; color:#063246; opacity:0.85; }
+
+  /* responsiveness */
+  @media(max-width:900px){
+    .grid-header, .grid-row{ grid-template-columns: 1fr; }
+    .rays{ grid-template-columns: 1fr; gap:6px; }
+    .audio-cell{ justify-content:flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="container" role="main">
+  <header>
+    <h1>Planetary Chakra Rays — Full Week (Preview)</h1>
+    <p class="lead">24 planetary hours per day — languages: EN / FR / DE / ES • Equal-width ray boxes • Auto-highlight active hour</p>
+  </header>
+
+  <div class="controls" aria-label="Top controls">
+    <div class="left-controls">
+      <div>
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="fr">FR</button>
+        <button class="lang-btn" data-lang="de">DE</button>
+        <button class="lang-btn" data-lang="es">ES</button>
+      </div>
+
+      <label for="day-selector" class="small-muted" style="margin-left:8px;margin-right:6px;">Show:</label>
+      <select id="day-selector">
+        <option value="all">All Days</option>
+        <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+      </select>
+    </div>
+
+    <div id="nowLabel">Local time: --:--</div>
+  </div>
+
+  <div id="content"></div>
+
+  <div class="export-row">
+    <button id="btnExportCSV">Export CSV</button>
+    <button id="btnExportJSON">Export JSON</button>
+  </div>
+  <p class="small-muted" style="text-align:center;margin-top:10px;">Tip: Put your audio files in an `audio/` folder near this file so lines under "Audio" will play.</p>
+</div>
+
+<script>
+/* ---------- Data & config ---------- */
+
+/* Monday slots (exact times) */
+const mondaySlots = [
+  ['07:53','08:47'],['08:47','09:41'],['09:41','10:35'],['10:35','11:29'],['11:29','12:24'],['12:24','13:18'],
+  ['13:18','14:12'],['14:12','15:06'],['15:06','16:01'],['16:01','16:55'],['16:55','17:49'],['17:49','18:43'],
+  ['18:43','19:49'],['19:49','20:55'],['20:55','22:01'],['22:01','23:07'],['23:07','00:13'],['00:13','01:19'],
+  ['01:19','02:25'],['02:25','03:31'],['03:31','04:37'],['04:37','05:42'],['05:42','06:48'],['06:48','07:54']
+];
+
+/* Planet definitions and colors (hex3/hex4/hex5) */
+const planetDefs = {
+  Moon:{pair:'Mercury', chakra:'Crown', hex3:'#FFD700', hex4:'#FFF8DC', hex5:'#E5E4E2'},
+  Saturn:{pair:'Jupiter', chakra:'Sacral', hex3:'#4B0082', hex4:'#EAE0C8', hex5:'#FFD1DC'},
+  Jupiter:{pair:'Saturn', chakra:'Third Eye', hex3:'#ADFF2F', hex4:'#8A2BE2', hex5:'#FFD700'},
+  Mars:{pair:'-', chakra:'Heart', hex3:'#FF69B4', hex4:'#FFD700', hex5:'#FF00FF'},
+  Sun:{pair:'Venus', chakra:'Throat', hex3:'#00008B', hex4:'#DDA0DD', hex5:'#EE82EE'},
+  Venus:{pair:'Sun', chakra:'Solar Plexus', hex3:'#9B111E', hex4:'#FF7F50', hex5:'#FF00FF'},
+  Mercury:{pair:'Moon', chakra:'Root', hex3:'#F8F8FF', hex4:'#00CED1', hex5:'#FFFFFF'}
+};
+
+/* Week and rotation */
+const baseOrder = ['Moon','Saturn','Jupiter','Mars','Sun','Venus','Mercury'];
+const days = [
+  {name:'Monday', ruler:'Moon'},
+  {name:'Tuesday', ruler:'Mars'},
+  {name:'Wednesday', ruler:'Mercury'},
+  {name:'Thursday', ruler:'Jupiter'},
+  {name:'Friday', ruler:'Venus'},
+  {name:'Saturday', ruler:'Saturn'},
+  {name:'Sunday', ruler:'Sun'}
+];
+
+function rotateTo(startPlanet){
+  const idx = baseOrder.indexOf(startPlanet);
+  return (idx === -1) ? baseOrder.slice() : baseOrder.slice(idx).concat(baseOrder.slice(0,idx));
+}
+
+function buildDayEntries(ruler){
+  const order = rotateTo(ruler);
+  const seq = [];
+  while(seq.length < 24) seq.push(...order);
+  seq.length = 24;
+  return seq.map((planet, i) => {
+    const [s,e] = mondaySlots[i];
+    const def = planetDefs[planet];
+    return {
+      planet,
+      pair: def.pair,
+      day: ruler,
+      timeStart: s,
+      timeEnd: e,
+      timeLabel: `${s}–${e}`,
+      chakra: def.chakra,
+      hex3: def.hex3,
+      hex4: def.hex4,
+      hex5: def.hex5,
+      audio: `audio/${planet.toLowerCase()}_${s.replace(':','')}.mp3`
+    };
+  });
+}
+
+const week = {};
+days.forEach(d => week[d.name] = buildDayEntries(d.ruler));
+
+/* ---------- Translations (EN / FR / DE / ES) ---------- */
+/* English is the canonical source; other languages fall back to English if empty */
+const translations = {
+  en: {
+    Moon: { inv3:'We ask for the Golden Yellow Ray of Love and Wisdom into our Crown Chakra.', bridge:'We ask for the Sea Foam Green, the Higher Cleansing, representing the Seat of the Soul in our Thymus.', inv4:'We ask for the Light Golden White, as the doorway to Ascension, and the Light Violet White representing Ascension and becoming one Universal Being.', inv5:'We ask for the Platinum representing the Source and the God Head. Connection within the Crown.', mantra:'Dhadhi sanka Thushaaraabham – Ksheero Dhaarnava Sambhavam, Namaami sasinam Somam – Sambhor makuta Bhooshanam', meaning:'The one who has the hue of curd and icebergs, one who emerges from the milky ocean, Chandra who adorns Shiva, I prostrate that Chandra.' },
+    Saturn: { inv3:'We ask for the Deep Purple for Ceremonial Order and Transmutation into the Sacral Chakra.', bridge:'We ask for the Sea Foam Green, the Higher Cleansing, representing the Seat of the Soul in our Thymus.', inv4:'We ask for the Pearlescent for anchoring the Body of Light, inviting the Soul-Merge with male and female energies into our Sacral.', inv5:'We ask for the Pink Gold, representing the 5th Dimensional Divine Intent into our Sacral.', mantra:'Neelaanchana Samaabaasam – Raviputhram Yamaagrajam, Chaayaa Maarthaanda Sambhootham – Thannamaami Sanaicharam', meaning:'The one who is blue, one who is like charcoal, the son of Surya and the brother of Yama, born to Chaya and Surya — I prostrate that Saneeswara.' },
+    Jupiter: { inv3:'We ask for the Green and Gold mixed with White Light for Science and Knowledge to come into our Third Eye.', bridge:'We ask for the Sea Foam Green, the Higher Cleansing, representing the Seat of the Soul in our Thymus.', inv4:'We ask for the Deep Blue Violet, representing the Divine Plan and allowing the mental mind to surrender into our Third Eye.', inv5:'We ask for the Blue Gold, which represents Divine Structure, into our Third Eye.', mantra:"Dhe'vaanaancha Risheenaancha – Gurum Kaanchan sannibham, Bhudhdhi bhootham Thrilokesam – Thannamaami Bhruhaspathim", meaning:'The one who is the Guru of the Devas and Rishis, radiant and intelligent, the Lord of all three worlds — I prostrate that Brihaspathi.' },
+    Mars: { inv3:'We ask for the Bright Pink of Creative Intelligence and Physical Action to come into our Heart.', bridge:'We ask for the Sea Foam Green, the Higher Cleansing, representing the Seat of the Soul in our Thymus.', inv4:'We ask for the Gold for anchoring of the New Age and the Christ Consciousness into our Heart.', inv5:'We ask for the Magenta that has to do with Universal Energy into our Heart.', mantra:'Dharanee garbha Sambhootham – Vidhyuth kaanthi Samaprabham, Kumaaram Sakthi Hasthancha – Mangalam Pranamaam Yaham', meaning:'The one who is the son of Bhooma Devi, who has the lustre of lightning, who holds Shakti — I prostrate that Angaraka.' },
+    Sun: { inv3:'We ask for the Deep Blue Ray of Personal Power and Will to come into our Throat.', bridge:'We ask for the Sea Foam Green, the Higher Cleansing, representing the Seat of the Soul in our Thymus.', inv4:'We ask for the Violet Pink, representing Vibratory Communication, into our Throat.', inv5:'We ask for the Violet Gold, representing Beingness into our Throat.', mantra:'Japaa kusuma Sankaasam – Kaasyapeyam Mahaath\'yuthim, Thamo’urim sarva Paapa ganam – Pranathosmi Dhiwaakaram', meaning:'One who looks like the Hibiscus flower, Son of Kashyapa, full of radiance — I prostrate that Surya.' },
+    Venus: { inv3:'We ask for the Ruby Red of Devotion and Spiritual Intent to come into our Solar Plexus.', bridge:'We ask for the Sea Foam Green, the Higher Cleansing, representing the Seat of the Soul in our Thymus.', inv4:'We ask for the Pink Orange, representing the Bridge to the New Age, into our Solar Plexus.', inv5:'We ask for the Magenta that has to do with Universal Energy into our Solar Plexus.', mantra:'Hima kundha M\'runaalaabam – Dhaithyaanam Paramam Gurum, Sarva saasthra Pravruththaaram – Bhaargavam Pranamaam Yaham', meaning:'The one who has the lustre of the dew, Lotus stem and Thumba flower — I prostrate that Sukracharya.' },
+    Mercury: { inv3:'We ask for the Crystalline White mixed with speckles of Green, for Harmony and Beauty into our Root.', bridge:'We ask for the Sea Foam Green, the Higher Cleansing, representing the Seat of the Soul in our Thymus.', inv4:'We ask for the Blue Green of the Joy and Attraction of the Body of Light, into our Base.', inv5:'We ask for the Multi White that has to do with Universal Light coming now into our Base.', mantra:'Piryangu kali Kaasyaamam – Roope\'naa Prathimam Budham, Sowmyam sowmya Gunopetham – Tham Bhudham Pranamaam Yaham', meaning:'The one who is dark like the bud of Priyangu flower, unequalled in beauty and intelligent — I prostrate that Budha.' }
+  },
+
+  fr: {
+    Moon:{ inv3:'Nous demandons le rayon jaune doré d’amour et de sagesse dans notre chakra couronne.', bridge:'Nous demandons le vert mousse de mer, le nettoyage supérieur, représentant le siège de l’âme dans notre thymus.', inv4:'Nous demandons le blanc doré clair comme porte vers l’ascension, et le blanc violet clair représentant l’ascension.', inv5:'Nous demandons le platine représentant la source et la tête divine.', mantra:'Dhadhi sanka Thushaaraabham – Ksheero Dhaarnava Sambhavam...', meaning:'Celui qui a la teinte du lait et des icebergs, Chandra, je me prosterne devant Chandra.' },
+    Saturn:{ inv3:'Nous demandons le violet profond pour l’ordre cérémonial et la transmutation dans le sacré.', bridge:'Nous demandons le vert mousse de mer, le nettoyage supérieur, représentant le siège de l’âme.', inv4:'Nous demandons le nacré pour ancrer le corps de lumière.', inv5:'Nous demandons l’or rose représentant l’intention divine 5D dans le sacré.', mantra:'Neelaanchana Samaabaasam – Raviputhram...', meaning:'Celui qui est bleu, fils de Surya — je me prosterne devant Saneeswara.' },
+    Jupiter:{ inv3:'Nous demandons le vert et l’or mélangés avec la lumière blanche pour la science dans notre troisième œil.', bridge:'Nous demandons le vert mousse de mer...', inv4:'Nous demandons le bleu-violet profond représentant le plan divin.', inv5:'Nous demandons le bleu-or représentant la structure divine.', mantra:"Dhe'vaanaancha Risheenaancha – Gurum Kaanchan...", meaning:'Le guru des Devas et Rishis — je me prosterne devant Brihaspathi.' },
+    Mars:{ inv3:'Nous demandons le rose vif pour l’intelligence créative et l’action physique dans notre cœur.', bridge:'Nous demandons le vert mousse de mer...', inv4:'Nous demandons l’or pour ancrer le nouvel âge et la conscience du Christ.', inv5:'Nous demandons le magenta pour l’énergie universelle.', mantra:'Dharanee garbha Sambhootham – Vidhyuth...', meaning:'Le fils de Bhooma Devi... je me prosterne devant Angaraka.' },
+    Sun:{ inv3:'Nous demandons le rayon bleu profond de puissance personnelle et de volonté dans notre gorge.', bridge:'Nous demandons le vert mousse de mer...', inv4:'Nous demandons le violet-rose représentant la communication vibratoire.', inv5:'Nous demandons le violet-or représentant l’être.', mantra:'Japaa kusuma Sankaasam – Kaasyapeyam...', meaning:'Celui qui ressemble à l’hibiscus — je me prosterne devant Surya.' },
+    Venus:{ inv3:'Nous demandons le rouge rubis de dévotion et d’intention spirituelle dans notre plexus solaire.', bridge:'Nous demandons le vert mousse de mer...', inv4:'Nous demandons le rose-orange représentant le pont vers le nouvel âge.', inv5:'Nous demandons le magenta relatif à l’énergie universelle.', mantra:'Hima kundha M\'runaalaabam – Dhaithyaanam...', meaning:'Le lotus et la fleur Thumba — je me prosterne devant Sukracharya.' },
+    Mercury:{ inv3:'Nous demandons le blanc cristallin mêlé de vert pour l’harmonie dans notre racine.', bridge:'Nous demandons le vert mousse de mer...', inv4:'Nous demandons le bleu-vert de joie et d’attraction du corps de lumière.', inv5:'Nous demandons le multi-blanc pour la lumière universelle.', mantra:'Piryangu kali Kaasyaamam – Roope\'naa...', meaning:'Sombre comme la knop de Priyangu — je me prosterne devant Budha.' }
+  },
+
+  de: {
+    Moon:{ inv3:'Wir bitten um den goldgelben Strahl von Liebe und Weisheit in unser Kronenchakra.', bridge:'Wir bitten um das schaumgrüne Meer, die höhere Reinigung, die den Sitz der Seele repräsentiert.', inv4:'Wir bitten um das hellgoldene Weiß als Tor zum Aufstieg und das hellviolette Weiß.', inv5:'Wir bitten um Platin, das die Quelle repräsentiert.', mantra:'Dhadhi sanka Thushaaraabham – Ksheero...', meaning:'Derjenige mit der Farbe von Quark und Eisbergen — ich verneige mich vor Chandra.' },
+    Saturn:{ inv3:'Wir bitten um tiefviolettes Licht für Zeremonielle Ordnung und Transformation im Sakralchakra.', bridge:'Wir bitten um das schaumgrüne Meer...', inv4:'Wir bitten um Perlmutt, um den Lichtkörper zu verankern.', inv5:'Wir bitten um Roségold, die 5D-göttliche Absicht.', mantra:'Neelaanchana Samaabaasam – Raviputhram...', meaning:'Der blaue Sohn von Surya — ich verneige mich vor Saneeswara.' },
+    Jupiter:{ inv3:'Wir bitten um Grün und Gold mit weißem Licht für Wissenschaft ins Dritte Auge.', bridge:'Wir bitten um das schaumgrüne Meer...', inv4:'Wir bitten um tiefblaues Violett für den göttlichen Plan.', inv5:'Wir bitten um Blau-Gold für göttliche Struktur.', mantra:"Dhe'vaanaancha Risheenaancha – Gurum Kaanchan...", meaning:'Der Guru der Devas — ich verneige mich vor Brihaspathi.' },
+    Mars:{ inv3:'Wir bitten um hellrosa kreative Intelligenz in unser Herz.', bridge:'Wir bitten um das schaumgrüne Meer...', inv4:'Wir bitten um Gold, um das Neue Zeitalter anzuerkennen.', inv5:'Wir bitten um Magenta für universelle Energie.', mantra:'Dharanee garbha Sambhootham – Vidhyuth...', meaning:'Sohn der Bhooma Devi — ich verneige mich vor Angaraka.' },
+    Sun:{ inv3:'Wir bitten um den tiefblauen Strahl persönlicher Kraft in unsere Kehle.', bridge:'Wir bitten um das schaumgrüne Meer...', inv4:'Wir bitten um Violett-Rosa für vibrationale Kommunikation.', inv5:'Wir bitten um Violett-Gold für Sein.', mantra:'Japaa kusuma Sankaasam – Kaasyapeyam...', meaning:'Der Hibiskus-ähnliche — ich verneige mich vor Surya.' },
+    Venus:{ inv3:'Wir bitten um rubinrotes Licht der Hingabe in unser Solarplexus.', bridge:'Wir bitten um das schaumgrüne Meer...', inv4:'Wir bitten um pink-orangefarbenes Licht als Brücke zum Neuen Zeitalter.', inv5:'Wir bitten um Magenta für universelle Energie.', mantra:'Hima kundha M\'runaalaabam – Dhaithyaanam...', meaning:'Lotusstängel und Thumba-Blume — ich verneige mich vor Sukracharya.' },
+    Mercury:{ inv3:'Wir bitten um kristallweiße, mit grün gesprenkelte Harmonie in unsere Wurzel.', bridge:'Wir bitten um das schaumgrüne Meer...', inv4:'Wir bitten um blau-grünes Licht der Freude des Lichtkörpers.', inv5:'Wir bitten um Multiweiß für universelles Licht.', mantra:'Piryangu kali Kaasyaamam – Roope\'naa...', meaning:'Dunkel wie die Knospe der Priyangu-Blume — ich verneige mich vor Budha.' }
+  },
+
+  es: {
+    Moon:{ inv3:'Pedimos el Rayo Amarillo Dorado de Amor y Sabiduría en nuestro Chakra Corona.', bridge:'Pedimos el Verde Espuma de Mar, la Limpieza Superior, representando el Asiento del Alma en nuestro Timo.', inv4:'Pedimos el Blanco Dorado Claro como puerta a la Ascensión y el Blanco Violeta Claro representando la Ascensión.', inv5:'Pedimos el Platino que representa la Fuente y la Cabeza Divina.', mantra:'Dhadhi sanka Thushaaraabham – Ksheero...', meaning:'El que tiene el tono del cuajo y los icebergs — me postro ante Chandra.' },
+    Saturn:{ inv3:'Pedimos el Púrpura Profundo para Orden Ceremonial y Transmutación en el Sacro.', bridge:'Pedimos el Verde Espuma de Mar...', inv4:'Pedimos el Perlado para anclar el Cuerpo de Luz.', inv5:'Pedimos el Oro Rosa que representa la Intención Divina 5D.', mantra:'Neelaanchana Samaabaasam – Raviputhram...', meaning:'Quien es azul, hijo de Surya — me postro ante Saneeswara.' },
+    Jupiter:{ inv3:'Pedimos el Verde y Oro mezclado con Luz Blanca para Ciencia y Conocimiento en el Tercer Ojo.', bridge:'Pedimos el Verde Espuma de Mar...', inv4:'Pedimos el Azul Violeta Profundo que representa el Plan Divino.', inv5:'Pedimos el Azul Dorado que representa la Estructura Divina.', mantra:"Dhe'vaanaancha Risheenaancha – Gurum Kaanchan...", meaning:'El Guru de los Devas y Rishis — me postro ante Brihaspathi.' },
+    Mars:{ inv3:'Pedimos el Rosa Brillante de Inteligencia Creativa y Acción Física en nuestro Corazón.', bridge:'Pedimos el Verde Espuma de Mar...', inv4:'Pedimos el Oro para anclar la Nueva Era y la Conciencia Cristica.', inv5:'Pedimos el Magenta relacionado con la Energía Universal.', mantra:'Dharanee garbha Sambhootham – Vidhyuth...', meaning:'Hijo de Bhooma Devi — me postro ante Angaraka.' },
+    Sun:{ inv3:'Pedimos el Rayo Azul Profundo de Poder Personal y Voluntad en nuestra Garganta.', bridge:'Pedimos el Verde Espuma de Mar...', inv4:'Pedimos el Rosa Violeta representando la Comunicación Vibratoria.', inv5:'Pedimos el Oro Violeta representando el Ser.', mantra:'Japaa kusuma Sankaasam – Kaasyapeyam...', meaning:'Aquel que parece la flor de hibisco — me postro ante Surya.' },
+    Venus:{ inv3:'Pedimos el Rojo Rubí de Devoción e Intención Espiritual en nuestro Plexo Solar.', bridge:'Pedimos el Verde Espuma de Mar...', inv4:'Pedimos el Naranja Rosado representando el Puente hacia la Nueva Era.', inv5:'Pedimos el Magenta relacionado con la Energía Universal.', mantra:'Hima kundha M\'runaalaabam – Dhaithyaanam...', meaning:'Tallo de loto y flor Thumba — me postro ante Sukracharya.' },
+    Mercury:{ inv3:'Pedimos el Blanco Cristalino mezclado con motas de verde para Armonía en nuestra Raíz.', bridge:'Pedimos el Verde Espuma de Mar...', inv4:'Pedimos el Azul Verdoso de la Alegría y Atracción del Cuerpo de Luz.', inv5:'Pedimos el Blanco Múltiple que trae la Luz Universal a nuestra Base.', mantra:'Piryangu kali Kaasyaamam – Roope\'naa...', meaning:'Oscuro como el capullo de Priyangu — me postro ante Budha.' }
+  }
+};
+
+/* ---------- Rendering ---------- */
+
+const content = document.getElementById('content');
+let currentLang = 'en';
+
+function renderTables(lang='en'){
+  currentLang = lang || 'en';
+  // update language buttons
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === currentLang));
+
+  content.innerHTML = '';
+  Object.keys(week).forEach(dayName => {
+    const entries = week[dayName];
+    const section = document.createElement('section');
+    section.className = 'day-section';
+    section.id = dayName;
+
+    const title = document.createElement('div');
+    title.className = 'day-title';
+    title.textContent = `${dayName} — Ruler: ${days.find(x=>x.name===dayName).ruler}`;
+    section.appendChild(title);
+
+    // header
+    const header = document.createElement('div');
+    header.className = 'grid-header';
+    header.innerHTML = '<div>Planet</div><div>Pair</div><div>Time</div><div>3D • Bridge • 4D • 5D • Mantra • Meaning • Audio</div>';
+    section.appendChild(header);
+
+    // rows
+    entries.forEach((ent, idx) => {
+      const tr = document.createElement('div');
+      tr.className = 'grid-row';
+      tr.dataset.index = idx;
+
+      // planet cell
+      const c1 = document.createElement('div'); c1.className='cell-main';
+      c1.innerHTML = `<div class="cell-planet">${ent.planet}</div><div class="cell-sub">${ent.chakra}</div>`;
+      tr.appendChild(c1);
+
+      // pair cell
+      const c2 = document.createElement('div'); c2.className='cell-main';
+      c2.innerHTML = `<div class="cell-sub">Pair: ${ent.pair}</div>`;
+      tr.appendChild(c2);
+
+      // time cell
+      const c3 = document.createElement('div'); c3.className='cell-main';
+      c3.innerHTML = `<div class="cell-sub">${ent.timeLabel}</div>`;
+      tr.appendChild(c3);
+
+      // rays cell (big)
+      const c4 = document.createElement('div'); c4.className='cell-main';
+      const rbox = document.createElement('div'); rbox.className='rays';
+
+      // 3D
+      const r3 = document.createElement('div'); r3.className='ray'; r3.style.background = ent.hex3;
+      const t3 = (translations[currentLang] && translations[currentLang][ent.planet] && translations[currentLang][ent.planet].inv3) || (translations.en[ent.planet].inv3 || '');
+      r3.innerHTML = `<div class="small">${t3}</div>`; rbox.appendChild(r3);
+
+      // Bridge - always sea foam green
+      const rb = document.createElement('div'); rb.className='ray bridge'; rb.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bridge') || '#7FFFD4';
+      const tb = (translations[currentLang] && translations[currentLang][ent.planet] && translations[currentLang][ent.planet].bridge) || (translations.en[ent.planet].bridge || '');
+      rb.innerHTML = `<div class="small">${tb}</div>`; rbox.appendChild(rb);
+
+      // 4D (use planet hex4)
+      const r4 = document.createElement('div'); r4.className='ray'; r4.style.background = ent.hex4;
+      const t4 = (translations[currentLang] && translations[currentLang][ent.planet] && translations[currentLang][ent.planet].inv4) || (translations.en[ent.planet].inv4 || '');
+      r4.innerHTML = `<div class="small">${t4}</div>`; rbox.appendChild(r4);
+
+      // 5D
+      const r5 = document.createElement('div'); r5.className='ray'; r5.style.background = ent.hex5;
+      const t5 = (translations[currentLang] && translations[currentLang][ent.planet] && translations[currentLang][ent.planet].inv5) || (translations.en[ent.planet].inv5 || '');
+      r5.innerHTML = `<div class="small">${t5}</div>`; rbox.appendChild(r5);
+
+      // assemble large cell with mantra/meaning/audio below rays
+      const metaDiv = document.createElement('div');
+      metaDiv.style.marginTop = '8px';
+      metaDiv.style.display = 'flex';
+      metaDiv.style.justifyContent = 'space-between';
+      metaDiv.style.alignItems = 'center';
+      metaDiv.style.gap = '12px';
+
+      const mm = document.createElement('div');
+      mm.style.flex = '1';
+      const mantra = (translations[currentLang] && translations[currentLang][ent.planet] && translations[currentLang][ent.planet].mantra) || (translations.en[ent.planet].mantra || '');
+      const meaning = (translations[currentLang] && translations[currentLang][ent.planet] && translations[currentLang][ent.planet].meaning) || (translations.en[ent.planet].meaning || '');
+      mm.innerHTML = `<div style="font-size:12px;color:#053246;font-weight:600">Mantra</div><div style="font-size:12px;color:#063246;margin-bottom:6px">${mantra}</div><div style="font-size:12px;color:#123c51">Meaning: ${meaning}</div>`;
+
+      const audioWrap = document.createElement('div'); audioWrap.className='audio-cell';
+      audioWrap.style.minWidth='220px';
+      // audio element (if file present browser will show audio control; if missing it will be empty)
+      const audioEl = document.createElement('audio');
+      audioEl.controls = true;
+      audioEl.preload = 'none';
+      const src = document.createElement('source');
+      src.src = ent.audio;
+      src.type = 'audio/mpeg';
+      audioEl.appendChild(src);
+      // fallback text
+      const fallback = document.createElement('div'); fallback.style.fontSize='12px'; fallback.style.color='#063246';
+      fallback.textContent = 'Audio (mp3)';
+
+      audioWrap.appendChild(audioEl);
+      audioWrap.appendChild(fallback);
+
+      metaDiv.appendChild(mm);
+      metaDiv.appendChild(audioWrap);
+
+      c4.appendChild(rbox);
+      c4.appendChild(metaDiv);
+      tr.appendChild(c4);
+
+      content.appendChild(section); // temporarily append to attach the tr in DOM order
+      section.appendChild(tr);
+    });
+
+    // ensure section appended once rows complete
+    if(!content.querySelector(`#${dayName}`)) content.appendChild(section);
+  });
+
+  highlightCurrent(); // after render
+}
+
+/* ---------- Highlight logic ---------- */
+function parseTimeToMinutes(t){ const [h,m]=t.split(':').map(Number); return h*60 + m; }
+
+function getActiveIndex(){
+  const now = new Date();
+  const minutes = now.getHours()*60 + now.getMinutes();
+  for(let i=0;i<mondaySlots.length;i++){
+    let s = parseTimeToMinutes(mondaySlots[i][0]);
+    let e = parseTimeToMinutes(mondaySlots[i][1]);
+    if(e <= s) e += 24*60;
+    let nowMin = minutes;
+    if(nowMin < s && e > 24*60) nowMin += 24*60;
+    if(nowMin >= s && nowMin < e) return i;
+  }
+  return -1;
+}
+
+function highlightCurrent(){
+  const idx = getActiveIndex();
+  // remove previous highlights
+  document.querySelectorAll('.grid-row').forEach(r => r.classList.remove('highlight'));
+  if(idx === -1) return;
+
+  // highlight row idx in each day's section
+  Object.keys(week).forEach(day => {
+    const sec = document.getElementById(day);
+    if(!sec) return;
+    const rows = sec.querySelectorAll('.grid-row');
+    if(rows[idx]) rows[idx].classList.add('highlight');
+  });
+
+  // auto-scroll when single day selected
+  const sel = document.getElementById('day-selector').value;
+  if(sel !== 'all'){
+    const sec = document.getElementById(sel);
+    if(sec){
+      const active = sec.querySelector('.grid-row.highlight');
+      if(active) active.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  }
+
+  // update now label
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0'), mm = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('nowLabel').textContent = `Local time: ${hh}:${mm}`;
+}
+
+/* ---------- Controls ---------- */
+document.querySelectorAll('.lang-btn').forEach(b => b.addEventListener('click', (e) => {
+  const lang = e.currentTarget.dataset.lang;
+  renderTables(lang);
+  document.getElementById('day-selector').value = 'all';
+}));
+
+document.getElementById('day-selector').addEventListener('change', (e) => {
+  const val = e.target.value;
+  document.querySelectorAll('.day-section').forEach(sec => {
+    sec.style.display = (val === 'all') ? 'block' : (sec.id === val ? 'block' : 'none');
+  });
+  if(val !== 'all'){
+    const sec = document.getElementById(val);
+    const activeRow = sec ? sec.querySelector('.grid-row.highlight') : null;
+    if(activeRow) activeRow.scrollIntoView({behavior:'smooth', block:'center'});
+  } else {
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+});
+
+/* ---------- Export CSV / JSON ---------- */
+function exportCSV(){
+  const rows = [];
+  const lang = currentLang;
+  Object.keys(week).forEach(day => {
+    week[day].forEach(r => {
+      const t = (translations[lang] && translations[lang][r.planet]) || translations.en[r.planet];
+      rows.push({
+        day,
+        planet:r.planet,
+        pair:r.pair,
+        time:r.timeLabel,
+        chakra:r.chakra,
+        inv3: t.inv3 || '',
+        bridge: t.bridge || '',
+        inv4: t.inv4 || '',
+        inv5: t.inv5 || '',
+        mantra: t.mantra || '',
+        meaning: t.meaning || '',
+        audio: r.audio
+      });
+    });
+  });
+  if(!rows.length) return;
+  const header = Object.keys(rows[0]);
+  const csv = [header.join(',')].concat(rows.map(r => header.map(h => `"${(r[h]||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n'));
+  const blob = new Blob([csv.join('\n')], { type:'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `planetary_week_${lang}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function exportJSON(){
+  const lang = currentLang;
+  const out = {};
+  Object.keys(week).forEach(day => {
+    out[day] = week[day].map(r => {
+      const t = (translations[lang] && translations[lang][r.planet]) || translations.en[r.planet];
+      return {
+        planet: r.planet, pair: r.pair, time: r.timeLabel, chakra: r.chakra,
+        inv3: t.inv3||'', bridge: t.bridge||'', inv4: t.inv4||'', inv5: t.inv5||'',
+        mantra: t.mantra||'', meaning: t.meaning||'', audio: r.audio
+      };
+    });
+  });
+  const blob = new Blob([JSON.stringify(out,null,2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `planetary_week_${lang}.json`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
+document.getElementById('btnExportJSON').addEventListener('click', exportJSON);
+
+/* ---------- Initialization ---------- */
+renderTables('en');
+document.getElementById('day-selector').value = 'all';
+highlightCurrent();
+setInterval(highlightCurrent, 60000);
+setInterval(()=>{ // update now label every 30s
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0'), mm = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('nowLabel').textContent = `Local time: ${hh}:${mm}`; 
+}, 30000);
+
+</script>
+</body>
+</html>
